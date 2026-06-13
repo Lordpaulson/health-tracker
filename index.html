@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Paul's Tracker">
+<meta name="theme-color" content="#060e1a">
+<title>Paul's Health Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #060e1a; --card: #0d1f35; --border: #1e3a5f;
+    --accent: #3b82f6; --green: #34d399; --red: #f87171;
+    --amber: #fbbf24; --purple: #8b5cf6; --muted: #64748b; --text: #e2e8f0;
+    --dose25: #64748b; --dose5: #3b82f6; --dose75: #8b5cf6;
+    --dose10: #ec4899; --dose125: #f97316; --dose15: #10b981;
+  }
+  html, body { background: var(--bg); color: var(--text); font-family: -apple-system, 'SF Pro Display', 'Inter', system-ui, sans-serif; min-height: 100vh; overflow-x: hidden; }
+  
+
+    /* Header */
+  .header { background: linear-gradient(135deg, #0d1f35, #0a1628); border-bottom: 1px solid var(--border); padding: 16px 20px 12px; position: sticky; top: 0; z-index: 100; }
+  .header-row { display: flex; justify-content: space-between; align-items: center; }
+  .header-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .header-name { font-size: 18px; font-weight: 800; line-height: 1.2; }
+  .header-weight { font-size: 26px; font-weight: 900; color: var(--green); line-height: 1; }
+  .header-loss { font-size: 12px; color: var(--green); }
+
+  /* Nav */
+  .nav { display: flex; border-bottom: 1px solid var(--border); background: #0a1628; position: sticky; top: 69px; z-index: 99; }
+  .nav-btn { flex: 1; padding: 11px 0; background: none; border: none; color: var(--muted); font-size: 11px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; font-family: inherit; }
+  .nav-btn.active { color: var(--accent); font-weight: 700; border-bottom-color: var(--accent); }
+
+  /* Views */
+  .view { display: none; padding: 14px 14px 90px; }
+  .view.active { display: block; }
+
+  /* Cards */
+  .card { background: var(--card); border-radius: 14px; padding: 14px 16px; border: 1px solid var(--border); margin-bottom: 12px; }
+  .card-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+  .section-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+  /* Grid stats */
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .stat-card { background: var(--card); border-radius: 12px; padding: 12px 10px; border: 1px solid var(--border); text-align: center; }
+  .stat-val { font-size: 20px; font-weight: 800; line-height: 1.1; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* Chart canvas */
+  .chart-wrap { position: relative; height: 180px; margin: 4px 0 8px; }
+  canvas { width: 100% !important; }
+
+  /* Dose bar */
+  .dose-track { background: #1e3a5f; border-radius: 4px; height: 6px; margin: 8px 0 4px; }
+  .dose-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+  .dose-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); }
+
+  /* Milestones */
+  .milestone { margin-bottom: 10px; }
+  .milestone-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+  .milestone-bar-bg { background: #1e3a5f; border-radius: 4px; height: 4px; }
+  .milestone-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+
+  /* Comp grid */
+  .comp-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .comp-item { text-align: center; }
+  .comp-val { font-size: 15px; font-weight: 800; }
+  .comp-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }
+  .comp-note { font-size: 9px; color: var(--muted); margin-top: 1px; }
+
+  /* Whoop */
+  .recovery-big { font-size: 36px; font-weight: 900; line-height: 1; }
+  .whoop-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .whoop-metric { text-align: center; }
+  .whoop-val { font-size: 17px; font-weight: 800; }
+  .whoop-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; margin-bottom: 2px; }
+  .whoop-base { font-size: 9px; color: var(--muted); }
+
+  /* Insight card */
+  .insight { background: #0a1628; border-radius: 12px; padding: 12px 14px; border: 1px solid var(--border); margin-bottom: 12px; }
+  .insight-title { font-size: 11px; font-weight: 700; color: var(--purple); margin-bottom: 6px; }
+  .insight-body { font-size: 11px; color: var(--muted); line-height: 1.7; }
+  .insight-body b { color: var(--text); }
+
+  /* Forms */
+  .form-section-title { font-size: 11px; font-weight: 700; color: var(--accent); margin: 14px 0 8px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .field input, .field select { width: 100%; background: #0a1628; border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; color: var(--text); font-size: 15px; outline: none; font-family: inherit; }
+  .field input:focus { border-color: var(--accent); }
+  .btn-primary { width: 100%; padding: 15px; border-radius: 12px; border: none; background: var(--accent); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background 0.3s; }
+  .btn-primary.saved { background: var(--green); }
+  .btn-purple { background: var(--purple); }
+
+  /* History */
+  .hist-item { background: var(--card); border-radius: 12px; padding: 12px 14px; border: 1px solid var(--border); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .hist-date { font-size: 13px; font-weight: 700; }
+  .hist-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .hist-weight { font-size: 20px; font-weight: 800; }
+  .hist-delta { font-size: 12px; }
+  .pill { display: inline-block; border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
+
+  /* FAB */
+  .fab { position: fixed; bottom: 24px; right: 20px; width: 54px; height: 54px; border-radius: 50%; background: var(--accent); border: none; color: #fff; font-size: 26px; cursor: pointer; box-shadow: 0 4px 20px rgba(59,130,246,0.4); display: flex; align-items: center; justify-content: center; z-index: 200; font-family: inherit; }
+  .fab.purple { background: var(--purple); box-shadow: 0 4px 20px rgba(139,92,246,0.4); }
+
+  /* Badges */
+  .badge-green { background: rgba(52,211,153,0.15); color: var(--green); }
+  .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
+  .badge-amber { background: rgba(251,191,36,0.15); color: var(--amber); }
+  .badge-blue { background: rgba(59,130,246,0.15); color: var(--accent); }
+
+  /* Scrollable history */
+  .history-scroll { max-height: 60vh; overflow-y: auto; }
+
+  /* Tabs within views */
+  .subtabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .subtab { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; font-family: inherit; background: #1e3a5f; color: var(--muted); }
+  .subtab.active { background: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-row">
+    <div>
+      <div class="header-label">Mounjaro Tracker</div>
+      <div class="header-name">Paul's Journey</div>
+    </div>
+    <div style="text-align:right">
+      <div class="header-weight" id="hdr-weight">—</div>
+      <div class="header-loss" id="hdr-loss"></div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nav-btn active" onclick="switchView('dashboard')">📊 Stats</button>
+  <button class="nav-btn" onclick="switchView('log')">➕ Log</button>
+  <button class="nav-btn" onclick="switchView('whoop')">💚 Whoop</button>
+  <button class="nav-btn" onclick="switchView('history')">📋 History</button>
+</div>
+
+<!-- DASHBOARD -->
+<div class="view active" id="view-dashboard">
+  <div class="grid-3" id="stats-grid"></div>
+
+  <!-- Dose -->
+  <div class="card" id="dose-card"></div>
+
+  <!-- Chart -->
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between">
+      <span>Weight Trend</span>
+      <span style="font-size:11px;color:var(--muted);font-weight:400">— 7-day avg</span>
+    </div>
+    <div class="chart-wrap"><canvas id="weightChart"></canvas></div>
+  </div>
+
+  <!-- Milestones -->
+  <div class="card" id="milestones-card"></div>
+
+  <!-- Body comp -->
+  <div class="card" id="comp-card" style="display:none"></div>
+
+  <!-- Whoop summary on dashboard -->
+  <div class="card" id="dash-whoop" style="display:none"></div>
+</div>
+
+<!-- LOG -->
+<div class="view" id="view-log">
+  <div class="card">
+    <div class="card-title">Log Weight & Body Comp</div>
+    <div class="field"><label>Date</label><input type="date" id="f-date"></div>
+    <div class="field"><label>Time</label><input type="time" id="f-time"></div>
+    <div class="field"><label>Weight (kg) *</label><input type="number" step="0.1" id="f-weight" placeholder="e.g. 136.1"></div>
+    <div class="field"><label>Dose (mg)</label>
+      <select id="f-dose">
+        <option value="2.5">2.5 mg</option>
+        <option value="5" selected>5.0 mg</option>
+        <option value="7.5">7.5 mg</option>
+        <option value="10">10.0 mg</option>
+        <option value="12.5">12.5 mg</option>
+        <option value="15">15.0 mg</option>
+      </select>
+    </div>
+    <div class="form-section-title">📱 Body Comp (Dr Trust — optional)</div>
+    <div class="grid-2">
+      <div class="field"><label>Body Fat %</label><input type="number" step="0.01" id="f-bf" placeholder="53.38"></div>
+      <div class="field"><label>Visceral Fat %</label><input type="number" step="0.01" id="f-vf" placeholder="28.87"></div>
+      <div class="field"><label>Muscle Mass (kg)</label><input type="number" step="0.01" id="f-mm" placeholder="60.28"></div>
+      <div class="field"><label>Skeletal Muscle (kg)</label><input type="number" step="0.01" id="f-sm" placeholder="30.12"></div>
+      <div class="field"><label>Body Water %</label><input type="number" step="0.01" id="f-bw" placeholder="33.66"></div>
+      <div class="field"><label>Protein Mass (kg)</label><input type="number" step="0.01" id="f-pm" placeholder="10.63"></div>
+      <div class="field"><label>Bone Mass (kg)</label><input type="number" step="0.01" id="f-bm" placeholder="3.17"></div>
+      <div class="field"><label>BMR (kcal)</label><input type="number" id="f-bmr" placeholder="1740"></div>
+      <div class="field"><label>Metabolic Age</label><input type="number" id="f-ma" placeholder="51"></div>
+      <div class="field"><label>Subcut. Fat %</label><input type="number" step="0.01" id="f-sf" placeholder="45.16"></div>
+    </div>
+    <div class="field"><label>Note</label><input type="text" id="f-note" placeholder="e.g. post-travel, new pen..."></div>
+    <button class="btn-primary" id="save-btn" onclick="saveEntry()">Save Entry</button>
+  </div>
+
+  <div class="insight">
+    <div class="insight-title">📊 What to track from Dr Trust</div>
+    <div class="insight-body">
+      <b>Body Fat %</b> — fat loss progress.<br>
+      <b>Visceral Fat %</b> — highest priority. Target &lt;13%. Currently in DANGER zone.<br>
+      <b>Muscle Mass</b> — must not fall on GLP-1 drugs. Gym + protein protect this.<br>
+      <b>Body Water %</b> — explains day-to-day scale fluctuations. Target 45–60%.<br>
+      <b>Protein Mass</b> — proxy for adequate protein intake.
+    </div>
+  </div>
+</div>
+
+<!-- WHOOP -->
+<div class="view" id="view-whoop">
+  <div class="card" id="whoop-latest"></div>
+  <div class="insight">
+    <div class="insight-title">💡 Recovery → Weight Correlation</div>
+    <div class="insight-body">
+      <b>HRV below baseline</b> → scale reads higher next morning (cortisol water retention).<br>
+      <b>Recovery &lt;34% (red)</b> → avoid aggressive restriction; body needs fuel.<br>
+      <b>Zero Zone 4-5</b> → visceral fat loss slows. Even 20 mins 2×/week changes this.<br>
+      <b>Steps below avg</b> → NEAT gap; a 20-min walk closes ~500 kcal.
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Log Whoop Reading</div>
+    <div class="field"><label>Date</label><input type="date" id="wf-date"></div>
+    <div class="field"><label>Recovery Score (%)</label><input type="number" id="wf-rec" placeholder="e.g. 73"></div>
+    <div class="field"><label>Sleep Score (%)</label><input type="number" id="wf-sleep" placeholder="e.g. 85"></div>
+    <div class="field"><label>HRV (ms)</label><input type="number" id="wf-hrv" placeholder="e.g. 51"></div>
+    <div class="field"><label>HRV Baseline</label><input type="number" id="wf-hrv-base" placeholder="e.g. 50"></div>
+    <div class="field"><label>Resting HR (bpm)</label><input type="number" id="wf-rhr" placeholder="e.g. 64"></div>
+    <div class="field"><label>RHR Baseline</label><input type="number" id="wf-rhr-base" placeholder="e.g. 67"></div>
+    <div class="field"><label>Day Strain</label><input type="number" step="0.1" id="wf-strain" placeholder="e.g. 8.5"></div>
+    <div class="field"><label>VO₂ Max</label><input type="number" id="wf-vo2" placeholder="e.g. 21"></div>
+    <div class="field"><label>Steps Today</label><input type="number" id="wf-steps" placeholder="e.g. 7100"></div>
+    <div class="field"><label>Steps Average</label><input type="number" id="wf-steps-avg" placeholder="e.g. 7100"></div>
+    <div class="field"><label>HR Zones 1-3 (mins)</label><input type="number" id="wf-z13" placeholder="e.g. 118"></div>
+    <div class="field"><label>HR Zones 4-5 (mins)</label><input type="number" id="wf-z45" placeholder="e.g. 0"></div>
+    <div class="field"><label>Note</label><input type="text" id="wf-note" placeholder="e.g. poor sleep, travel..."></div>
+    <button class="btn-primary btn-purple" id="whoop-save-btn" onclick="saveWhoop()">Save Whoop Reading</button>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="view" id="view-history">
+  <div class="subtabs">
+    <button class="subtab active" onclick="switchHistTab('weight')">Weight</button>
+    <button class="subtab" onclick="switchHistTab('comp')">Body Comp</button>
+    <button class="subtab" onclick="switchHistTab('whoop')">Whoop</button>
+  </div>
+  <div id="hist-weight" class="history-scroll"></div>
+  <div id="hist-comp" class="history-scroll" style="display:none"></div>
+  <div id="hist-whoop-list" class="history-scroll" style="display:none"></div>
+</div>
+
+<script>
+// ── DATA ────────────────────────────────────────────────────────────────────
+const BASELINE = 143.70;
+const WEIGHT_KEY = 'paul_weight_v2';
+const WHOOP_KEY  = 'paul_whoop_v2';
+
+const SEED_WEIGHT = [
+  {date:"2026-04-01",time:"",weight:143.70,dose:2.5,bf:57.24,mm:58.38,vf:30.00,sm:27.62,bw:30.87,pm:9.75,bm:3.07,bmr:1697,ma:50,sf:48.63,note:"Baseline — Day 1"},
+  {date:"2026-04-02",time:"",weight:141.20,dose:2.5},
+  {date:"2026-04-03",time:"",weight:140.40,dose:2.5},
+  {date:"2026-04-04",time:"",weight:140.20,dose:2.5},
+  {date:"2026-04-05",time:"",weight:140.50,dose:2.5},
+  {date:"2026-04-08",time:"",weight:141.20,dose:2.5},
+  {date:"2026-04-09",time:"",weight:142.30,dose:2.5},
+  {date:"2026-04-10",time:"09:25",weight:142.00,dose:2.5,bf:56.33,mm:58.92,vf:30.00,sm:28.21,bw:31.53,pm:9.96,bm:3.10,bmr:1709,ma:50,sf:47.75,note:"Day 10"},
+  {date:"2026-04-11",time:"",weight:140.80,dose:2.5},
+  {date:"2026-04-12",time:"",weight:141.20,dose:2.5},
+  {date:"2026-04-13",time:"",weight:140.70,dose:2.5},
+  {date:"2026-04-14",time:"",weight:140.10,dose:2.5},
+  {date:"2026-04-15",time:"",weight:140.50,dose:2.5},
+  {date:"2026-04-16",time:"",weight:140.40,dose:2.5},
+  {date:"2026-04-17",time:"",weight:140.20,dose:2.5},
+  {date:"2026-04-18",time:"",weight:140.00,dose:2.5},
+  {date:"2026-04-19",time:"",weight:139.20,dose:2.5},
+  {date:"2026-04-20",time:"09:26",weight:140.20,dose:2.5,bf:55.41,mm:59.39,vf:30.00,sm:28.80,bw:32.19,pm:10.17,bm:3.13,bmr:1720,ma:50,sf:46.87,note:"Day 20"},
+  {date:"2026-04-21",time:"",weight:139.40,dose:2.5},
+  {date:"2026-04-23",time:"",weight:140.20,dose:2.5},
+  {date:"2026-04-24",time:"",weight:139.60,dose:2.5},
+  {date:"2026-04-26",time:"",weight:140.30,dose:2.5},
+  {date:"2026-04-28",time:"",weight:139.50,dose:2.5},
+  {date:"2026-04-30",time:"09:27",weight:141.30,dose:2.5,bf:56.02,mm:59.04,vf:30.00,sm:28.41,bw:31.76,pm:10.03,bm:3.11,bmr:1712,ma:50,sf:47.46,note:"End of 2.5mg phase"},
+  {date:"2026-05-04",time:"",weight:141.80,dose:2.5},
+  {date:"2026-05-05",time:"",weight:140.40,dose:2.5},
+  {date:"2026-05-06",time:"",weight:139.70,dose:2.5},
+  {date:"2026-05-07",time:"",weight:140.10,dose:2.5},
+  {date:"2026-05-08",time:"",weight:140.10,dose:2.5},
+  {date:"2026-05-09",time:"09:28",weight:140.90,dose:5.0,bf:55.97,mm:58.93,vf:30.00,sm:28.44,bw:31.79,pm:10.04,bm:3.10,bmr:1710,ma:51,sf:47.41,note:"Day 1 on 5mg"},
+  {date:"2026-05-10",time:"",weight:140.40,dose:5.0},
+  {date:"2026-05-11",time:"",weight:138.80,dose:5.0},
+  {date:"2026-05-12",time:"",weight:137.90,dose:5.0},
+  {date:"2026-05-13",time:"",weight:138.40,dose:5.0},
+  {date:"2026-05-14",time:"09:29",weight:138.20,dose:5.0,bf:54.45,mm:59.81,vf:29.56,sm:29.43,bw:32.89,pm:10.39,bm:3.15,bmr:1729,ma:51,sf:46.04,note:"Day 6 on 5mg"},
+  {date:"2026-05-15",time:"",weight:137.70,dose:5.0},
+  {date:"2026-05-16",time:"",weight:138.50,dose:5.0},
+  {date:"2026-05-17",time:"",weight:139.60,dose:5.0},
+  {date:"2026-05-19",time:"",weight:137.90,dose:5.0},
+  {date:"2026-05-20",time:"09:30",weight:138.00,dose:5.0,bf:54.45,mm:59.72,vf:29.55,sm:29.43,bw:32.89,pm:10.39,bm:3.14,bmr:1727,ma:51,sf:46.04,note:"Day 12 on 5mg"},
+  {date:"2026-05-23",time:"",weight:137.40,dose:5.0},
+  {date:"2026-05-24",time:"",weight:137.30,dose:5.0},
+  {date:"2026-05-26",time:"",weight:137.10,dose:5.0},
+  {date:"2026-05-27",time:"",weight:136.70,dose:5.0},
+  {date:"2026-05-29",time:"09:31",weight:136.00,dose:5.0,bf:53.38,mm:60.23,vf:28.87,sm:30.12,bw:33.66,pm:10.63,bm:3.17,bmr:1739,ma:51,sf:45.16,note:"New low"},
+  {date:"2026-05-31",time:"",weight:138.40,dose:5.0},
+  {date:"2026-06-01",time:"",weight:136.80,dose:5.0},
+  {date:"2026-06-02",time:"",weight:136.90,dose:5.0},
+  {date:"2026-06-03",time:"",weight:136.80,dose:5.0},
+  {date:"2026-06-05",time:"09:31",weight:137.00,dose:5.0,bf:53.84,mm:60.08,vf:29.17,sm:29.82,bw:33.33,pm:10.53,bm:3.16,bmr:1736,ma:51,sf:45.54,note:"Jun 5"},
+  {date:"2026-06-07",time:"",weight:136.90,dose:5.0},
+  {date:"2026-06-09",time:"09:33",weight:136.40,dose:5.0,bf:53.53,mm:60.21,vf:28.97,sm:30.02,bw:33.55,pm:10.59,bm:3.17,bmr:1739,ma:51,sf:45.28,note:"Jun 9"},
+  {date:"2026-06-11",time:"08:30",weight:136.20,dose:5.0,bf:53.38,mm:60.32,vf:28.88,sm:30.12,bw:33.66,pm:10.63,bm:3.17,bmr:1741,ma:51,sf:45.16,note:"New pen — Dr Kannan confirmed 5mg"},
+  {date:"2026-06-12",time:"07:46",weight:136.10,dose:5.0,bf:53.38,mm:60.28,vf:28.87,sm:30.12,bw:33.66,pm:10.63,bm:3.17,bmr:1740,ma:51,sf:45.16,note:"Day 2 new pen"},
+];
+
+const SEED_WHOOP = [
+  {date:"2026-06-11",rec:41,sleep:null,hrv:46,hrvBase:50,rhr:69,rhrBase:67,avgHr:76,vo2:21,strain:null,steps:4976,stepsAvg:7009,z13:88,z45:0,note:"First Whoop log"},
+  {date:"2026-06-12",rec:73,sleep:85,hrv:51,hrvBase:50,rhr:64,rhrBase:67,avgHr:64,vo2:21,strain:0.1,steps:52,stepsAvg:7100,z13:118,z45:0,note:"Green recovery — early morning"},
+];
+
+// ── STORAGE ──────────────────────────────────────────────────────────────────
+function loadData(key, seed) {
+  try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : seed; }
+  catch { return seed; }
+}
+function saveData(key, data) {
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
+}
+function initStorage() {
+  // Try to merge any locally saved entries on top of seed data
+  try {
+    const saved = localStorage.getItem(WEIGHT_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Merge: use saved entries where they exist, seed for the rest
+      const savedDates = new Set(parsed.map(e => e.date));
+      const merged = [...parsed, ...SEED_WEIGHT.filter(e => !savedDates.has(e.date))];
+      weights = merged;
+    } else { weights = [...SEED_WEIGHT]; }
+  } catch { weights = [...SEED_WEIGHT]; }
+  try {
+    const saved = localStorage.getItem(WHOOP_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const savedDates = new Set(parsed.map(e => e.date));
+      const merged = [...parsed, ...SEED_WHOOP.filter(e => !savedDates.has(e.date))];
+      whoops = merged;
+    } else { whoops = [...SEED_WHOOP]; }
+  } catch { whoops = [...SEED_WHOOP]; }
+}
+
+let weights = [...SEED_WEIGHT];
+let whoops  = [...SEED_WHOOP];
+
+function getWeights() { return [...weights].sort((a,b) => a.date.localeCompare(b.date)); }
+function getWhoops()  { return [...whoops].sort((a,b)  => a.date.localeCompare(b.date)); }
+
+// ── UTILS ────────────────────────────────────────────────────────────────────
+const DOSE_COL = {2.5:'#64748b',5:'#3b82f6',7.5:'#8b5cf6',10:'#ec4899',12.5:'#f97316',15:'#10b981'};
+function doseCol(d) { return DOSE_COL[parseFloat(d)] || '#3b82f6'; }
+function fmt(d) { return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}); }
+function ma7(arr, i) {
+  const sl = arr.slice(Math.max(0,i-6),i+1);
+  return +(sl.reduce((s,e)=>s+e.weight,0)/sl.length).toFixed(2);
+}
+function recovCol(r) { return r>=67?'var(--green)':r>=34?'var(--amber)':'var(--red)'; }
+
+// ── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const sorted = getWeights();
+  const latest = sorted[sorted.length-1];
+  const prev   = sorted[sorted.length-2];
+  if (!latest) return;
+
+  const totalLoss    = +(BASELINE - latest.weight).toFixed(1);
+  const totalLossPct = +((totalLoss/BASELINE)*100).toFixed(1);
+  const dayChg       = prev ? +(prev.weight - latest.weight).toFixed(2) : 0;
+  const wk7          = sorted.slice(-7);
+  const wkChg        = wk7.length>=2 ? +(wk7[0].weight - wk7[wk7.length-1].weight).toFixed(2) : 0;
+
+  // Header
+  document.getElementById('hdr-weight').textContent = latest.weight+' kg';
+  document.getElementById('hdr-loss').textContent   = '↓ '+totalLoss+' kg ('+totalLossPct+'%)';
+
+  // Stats grid
+  document.getElementById('stats-grid').innerHTML = [
+    {l:'From baseline', v:`−${totalLoss} kg`, s:totalLossPct+'%', c:'var(--green)'},
+    {l:'vs yesterday',  v:(dayChg>=0?'−':'+')+(Math.abs(dayChg)), s:'kg', c:dayChg>=0?'var(--green)':'var(--red)'},
+    {l:'7-day change',  v:(wkChg>=0?'−':'+')+(Math.abs(wkChg)),  s:'kg', c:wkChg>=0?'var(--green)':'var(--red)'},
+  ].map(x=>`<div class="stat-card"><div class="section-label">${x.l}</div><div class="stat-val" style="color:${x.c}">${x.v}</div><div class="stat-sub">${x.s}</div></div>`).join('');
+
+  // Dose card
+  const curDose = parseFloat(latest.dose)||5;
+  const nextDose = curDose < 15 ? curDose+2.5 : null;
+  document.getElementById('dose-card').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><div class="section-label">Current Dose</div>
+        <div style="font-size:24px;font-weight:900;color:${doseCol(curDose)}">${curDose} mg</div></div>
+      ${nextDose?`<div style="text-align:right"><div class="section-label">Next eligible</div>
+        <div style="font-size:16px;font-weight:700;color:${doseCol(nextDose)}">${nextDose} mg</div>
+        <div style="font-size:10px;color:var(--muted)">Ask prescriber</div></div>`:''}
+    </div>
+    <div class="dose-track"><div class="dose-fill" style="width:${(curDose/15)*100}%;background:${doseCol(curDose)}"></div></div>
+    <div class="dose-labels"><span>2.5</span><span>5</span><span>7.5</span><span>10</span><span>12.5</span><span>15 mg</span></div>`;
+
+  // Chart
+  renderChart(sorted);
+
+  // Milestones
+  const goals = [140,135,130,125,120];
+  document.getElementById('milestones-card').innerHTML = `<div class="card-title">Goal Milestones</div>` +
+    goals.map(g => {
+      const done = latest.weight <= g;
+      const pct  = Math.min(100,Math.max(0,((BASELINE-g)===0?0:((BASELINE-latest.weight)/(BASELINE-g))*100)));
+      return `<div class="milestone">
+        <div class="milestone-row">
+          <span style="color:${done?'var(--green)':'var(--text)'}">${done?'✅':'🎯'} Under ${g} kg</span>
+          <span style="color:${done?'var(--green)':'var(--muted)'}">${done?'Done!':pct.toFixed(0)+'%'}</span>
+        </div>
+        <div class="milestone-bar-bg"><div class="milestone-bar-fill" style="width:${pct}%;background:${done?'var(--green)':'var(--accent)'}"></div></div>
+      </div>`;
+    }).join('');
+
+  // Body comp
+  const compEntry = [...sorted].reverse().find(e=>e.bf);
+  if (compEntry) {
+    const cc = document.getElementById('comp-card');
+    cc.style.display = '';
+    cc.innerHTML = `<div class="card-title">Body Composition <span style="font-size:10px;color:var(--muted);font-weight:400">— ${fmt(compEntry.date)}</span></div>
+      <div class="comp-grid">${[
+        {l:'Body Fat',   v:compEntry.bf+'%',         n:'Target <25%',  a:compEntry.bf>30},
+        {l:'Visceral',   v:compEntry.vf+'%',         n:'Target <13%',  a:compEntry.vf>13},
+        {l:'Muscle',     v:compEntry.mm+' kg',       n:'Preserve!',    a:false},
+        {l:'Skel Muscle',v:compEntry.sm+' kg',       n:'Key metric',   a:false},
+        {l:'Body Water', v:compEntry.bw+'%',         n:'Target 45–60%',a:compEntry.bw<40},
+        {l:'Protein',    v:compEntry.pm+' kg',       n:'↑ intake',     a:compEntry.pm<12},
+        {l:'Bone Mass',  v:compEntry.bm+' kg',       n:'Maintain',     a:false},
+        {l:'BMR',        v:compEntry.bmr+' kcal',    n:'Excellent ✓',  a:false},
+        {l:'Metab Age',  v:compEntry.ma+' yrs',      n:'Actual: 44',   a:compEntry.ma>44},
+      ].map(x=>`<div class="comp-item">
+        <div class="comp-lbl">${x.l}</div>
+        <div class="comp-val" style="color:${x.a?'var(--red)':'var(--accent)'}">${x.v}</div>
+        <div class="comp-note" style="color:${x.a?'var(--red)':'var(--muted)'}">${x.n}</div>
+      </div>`).join('')}</div>`;
+  }
+
+  // Whoop on dashboard
+  const wSorted = getWhoops();
+  const wLatest = wSorted[wSorted.length-1];
+  if (wLatest) {
+    const dw = document.getElementById('dash-whoop');
+    dw.style.display='';
+    dw.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="card-title" style="margin:0">Whoop <span style="font-size:10px;color:var(--muted);font-weight:400">— ${fmt(wLatest.date)}</span></div>
+      <div class="recovery-big" style="color:${recovCol(wLatest.rec||0)}">${wLatest.rec||'—'}%</div>
+    </div>
+    <div class="whoop-grid">${[
+      {l:'HRV',   v:wLatest.hrv,    b:wLatest.hrvBase, u:'ms',  hi:true},
+      {l:'RHR',   v:wLatest.rhr,    b:wLatest.rhrBase, u:'bpm', hi:false},
+      {l:'Sleep', v:wLatest.sleep,  b:null,             u:'%',   hi:true},
+      {l:'Strain',v:wLatest.strain, b:null,             u:'',    hi:true},
+      {l:'Z4-5',  v:wLatest.z45!==undefined?wLatest.z45+'m':'—', b:null, u:'', hi:true},
+      {l:'VO₂Max',v:wLatest.vo2,   b:null,             u:'',    hi:true},
+    ].map(x=>{
+      const isAbove = x.b ? x.v > x.b : null;
+      const good    = isAbove===null?null:(x.hi?isAbove:!isAbove);
+      const col     = good===null?'var(--accent)':(good?'var(--green)':'var(--red)');
+      return `<div class="whoop-metric">
+        <div class="whoop-lbl">${x.l}</div>
+        <div class="whoop-val" style="color:${col}">${x.v??'—'}${x.u&&x.v?' '+x.u:''}</div>
+        ${x.b?`<div class="whoop-base">avg ${x.b}</div>`:''}
+      </div>`;
+    }).join('')}</div>`;
+  }
+}
+
+// ── CHART ────────────────────────────────────────────────────────────────────
+let chartInstance = null;
+function renderChart(sorted) {
+  const ctx = document.getElementById('weightChart').getContext('2d');
+  const step = Math.max(1, Math.floor(sorted.length/8));
+  const labels  = sorted.map((e,i) => i%step===0 ? fmt(e.date) : '');
+  const weights_ = sorted.map(e=>e.weight);
+  const ma7arr   = sorted.map((_,i)=>ma7(sorted,i));
+
+  if (chartInstance) { chartInstance.destroy(); chartInstance=null; }
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Weight', data:weights_, borderColor:'#3b82f6', borderWidth:1.5,
+          pointRadius:2, pointBackgroundColor:'#3b82f6', tension:0.3, fill:false },
+        { label:'7-day avg', data:ma7arr, borderColor:'#34d399', borderWidth:2,
+          pointRadius:0, tension:0.4, fill:false, borderDash:[] },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, animation:{duration:300},
+      plugins:{ legend:{display:false},
+        annotation:{ annotations:{ baseline:{type:'line',yMin:BASELINE,yMax:BASELINE,
+          borderColor:'#f87171',borderWidth:1,borderDash:[4,4]} }} },
+      scales:{
+        x:{ ticks:{color:'#64748b',font:{size:9}}, grid:{color:'#1e3a5f',drawBorder:false} },
+        y:{ ticks:{color:'#64748b',font:{size:9}}, grid:{color:'#1e3a5f',drawBorder:false},
+            min: Math.floor(Math.min(...weights_))-1, max: Math.ceil(Math.max(...weights_))+1 }
+      }
+    }
+  });
+}
+
+// ── HISTORY ──────────────────────────────────────────────────────────────────
+function renderHistory() {
+  const sorted = getWeights().reverse();
+  document.getElementById('hist-weight').innerHTML = sorted.map((e,i)=>{
+    const nextE = sorted[i+1];
+    const delta = nextE ? +(nextE.weight - e.weight).toFixed(2) : null;
+    return `<div class="hist-item">
+      <div>
+        <div class="hist-date">${fmt(e.date)}${e.time?' <span style="font-size:10px;color:var(--muted)">· '+e.time+'</span>':''}</div>
+        <div class="hist-meta" style="margin-top:3px">
+          <span class="pill" style="background:${doseCol(e.dose)}22;color:${doseCol(e.dose)}">${e.dose}mg</span>
+          ${e.note?` <span style="color:var(--amber)">"${e.note}"</span>`:''}
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="hist-weight">${e.weight}</div>
+        ${delta!==null?`<div class="hist-delta" style="color:${delta>=0?'var(--green)':'var(--red)'}">${delta>=0?'↓':'↑'}${Math.abs(delta)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const compEntries = sorted.filter(e=>e.bf);
+  document.getElementById('hist-comp').innerHTML = compEntries.length===0
+    ? '<div style="color:var(--muted);font-size:13px;padding:16px">No body comp data yet.</div>'
+    : compEntries.map(e=>`<div class="card" style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div class="hist-date">${fmt(e.date)}</div>
+          <div style="font-size:18px;font-weight:800">${e.weight} kg</div>
+        </div>
+        <div class="comp-grid" style="grid-template-columns:1fr 1fr 1fr">
+          ${[['Fat',e.bf+'%','var(--red)'],['Visc',e.vf+'%','var(--red)'],['Muscle',e.mm+' kg','var(--green)'],
+             ['Skel',e.sm+' kg','var(--green)'],['Water',e.bw+'%','var(--accent)'],['Protein',e.pm+' kg','var(--accent)']
+          ].map(x=>`<div class="comp-item"><div class="comp-lbl">${x[0]}</div><div class="comp-val" style="color:${x[2]};font-size:13px">${x[1]}</div></div>`).join('')}
+        </div>
+      </div>`).join('');
+
+  const wsorted = getWhoops().reverse();
+  document.getElementById('hist-whoop-list').innerHTML = wsorted.length===0
+    ? '<div style="color:var(--muted);font-size:13px;padding:16px">No Whoop data yet.</div>'
+    : wsorted.map(e=>`<div class="hist-item">
+        <div>
+          <div class="hist-date">${fmt(e.date)}</div>
+          <div class="hist-meta">${e.hrv?'HRV '+e.hrv+'ms':''} ${e.rhr?'· RHR '+e.rhr:''} ${e.strain?'· Strain '+e.strain:''}</div>
+          ${e.note?`<div style="font-size:11px;color:var(--amber)">"${e.note}"</div>`:''}
+        </div>
+        <div style="text-align:right">
+          ${e.rec!==undefined?`<div style="font-size:24px;font-weight:900;color:${recovCol(e.rec)}">${e.rec}%</div>`:''}
+          ${e.sleep?`<div style="font-size:11px;color:var(--muted)">😴 ${e.sleep}%</div>`:''}
+        </div>
+      </div>`).join('');
+}
+
+// ── WHOOP VIEW ────────────────────────────────────────────────────────────────
+function renderWhoopView() {
+  const wSorted = getWhoops();
+  const wLatest = wSorted[wSorted.length-1];
+  const el = document.getElementById('whoop-latest');
+  if (!wLatest) { el.innerHTML='<div style="color:var(--muted)">No Whoop data yet.</div>'; return; }
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div><div class="section-label">Latest — ${fmt(wLatest.date)}</div>
+        <div style="font-size:12px;color:var(--muted)">Sleep ${wLatest.sleep||'—'}%</div></div>
+      <div class="recovery-big" style="color:${recovCol(wLatest.rec||0)}">${wLatest.rec||'—'}<span style="font-size:14px">%</span></div>
+    </div>
+    <div class="whoop-grid">${[
+      {l:'HRV',v:wLatest.hrv,b:wLatest.hrvBase,u:'ms',hi:true},
+      {l:'RHR',v:wLatest.rhr,b:wLatest.rhrBase,u:'bpm',hi:false},
+      {l:'Avg HR',v:wLatest.avgHr,b:null,u:'',hi:false},
+      {l:'VO₂ Max',v:wLatest.vo2,b:null,u:'',hi:true},
+      {l:'Z1-3',v:wLatest.z13!==undefined?wLatest.z13+'m':'—',b:null,u:'',hi:true},
+      {l:'Z4-5 🔴',v:wLatest.z45!==undefined?wLatest.z45+'m':'—',b:null,u:'',hi:true},
+      {l:'Steps',v:wLatest.steps,b:wLatest.stepsAvg,u:'',hi:true},
+      {l:'Strain',v:wLatest.strain,b:null,u:'',hi:true},
+    ].map(x=>{
+      const isAbove = x.b ? x.v>x.b : null;
+      const good = isAbove===null?null:(x.hi?isAbove:!isAbove);
+      const col = good===null?'var(--accent)':(good?'var(--green)':'var(--red)');
+      return `<div class="whoop-metric">
+        <div class="whoop-lbl">${x.l}</div>
+        <div class="whoop-val" style="color:${col}">${x.v??'—'}${x.u&&x.v?' '+x.u:''}</div>
+        ${x.b?`<div class="whoop-base">avg ${x.b}</div>`:''}
+      </div>`;
+    }).join('')}</div>`;
+}
+
+// ── SAVE ENTRY ────────────────────────────────────────────────────────────────
+function saveEntry() {
+  const w = parseFloat(document.getElementById('f-weight').value);
+  const d = document.getElementById('f-date').value;
+  if (!w || !d) { alert('Date and weight are required.'); return; }
+  const entry = {
+    date:d, time:document.getElementById('f-time').value,
+    weight:w, dose:parseFloat(document.getElementById('f-dose').value)||5,
+    bf:  v('f-bf'),  vf:  v('f-vf'),  mm:  v('f-mm'),
+    sm:  v('f-sm'),  bw:  v('f-bw'),  pm:  v('f-pm'),
+    bm:  v('f-bm'),  bmr: v('f-bmr'), ma:  v('f-ma'),  sf:  v('f-sf'),
+    note:document.getElementById('f-note').value||undefined,
+  };
+  weights = [...weights.filter(e=>e.date!==d), entry];
+  saveData(WEIGHT_KEY, weights);
+  const btn = document.getElementById('save-btn');
+  btn.textContent='✓ Saved!'; btn.classList.add('saved');
+  setTimeout(()=>{ btn.textContent='Save Entry'; btn.classList.remove('saved'); },2000);
+  document.getElementById('f-weight').value='';
+  ['f-bf','f-vf','f-mm','f-sm','f-bw','f-pm','f-bm','f-bmr','f-ma','f-sf','f-note'].forEach(id=>document.getElementById(id).value='');
+  renderDashboard();
+}
+function v(id) { const val=parseFloat(document.getElementById(id).value); return isNaN(val)?undefined:val; }
+
+// ── SAVE WHOOP ────────────────────────────────────────────────────────────────
+function saveWhoop() {
+  const d = document.getElementById('wf-date').value;
+  if (!d) { alert('Date required.'); return; }
+  const entry = {
+    date:d,
+    rec:   vw('wf-rec'),   sleep: vw('wf-sleep'), hrv:   vw('wf-hrv'),
+    hrvBase:vw('wf-hrv-base'), rhr: vw('wf-rhr'), rhrBase:vw('wf-rhr-base'),
+    avgHr: vw('wf-vo2'),   vo2:   vw('wf-vo2'),   strain:vw('wf-strain'),
+    steps: vw('wf-steps'), stepsAvg:vw('wf-steps-avg'),
+    z13:   vw('wf-z13'),   z45:   vw('wf-z45'),
+    note:  document.getElementById('wf-note').value||undefined,
+  };
+  whoops = [...whoops.filter(e=>e.date!==d), entry];
+  saveData(WHOOP_KEY, whoops);
+  const btn = document.getElementById('whoop-save-btn');
+  btn.textContent='✓ Saved!'; btn.classList.add('saved');
+  setTimeout(()=>{ btn.textContent='Save Whoop Reading'; btn.classList.remove('saved'); },2000);
+  ['wf-rec','wf-sleep','wf-hrv','wf-hrv-base','wf-rhr','wf-rhr-base','wf-strain','wf-vo2','wf-steps','wf-z13','wf-z45','wf-note'].forEach(id=>document.getElementById(id).value='');
+  renderWhoopView(); renderDashboard();
+}
+function vw(id) { const val=parseFloat(document.getElementById(id).value); return isNaN(val)?undefined:val; }
+
+// ── NAV ──────────────────────────────────────────────────────────────────────
+let currentView = 'dashboard';
+function switchView(v) {
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  const idx = ['dashboard','log','whoop','history'].indexOf(v);
+  document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+  currentView = v;
+  if (v==='history')   renderHistory();
+  if (v==='whoop')     renderWhoopView();
+  if (v==='dashboard') renderDashboard();
+  // Show/hide FAB
+  const fab = document.getElementById('fab');
+  if (fab) fab.style.display = (v==='log'||v==='whoop') ? 'none' : 'flex';
+}
+
+function switchHistTab(t) {
+  document.querySelectorAll('.subtab').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  ['weight','comp','whoop-list'].forEach(id=>{
+    document.getElementById('hist-'+id).style.display = id===t||('hist-'+id)==='hist-'+t?'':'none';
+  });
+  document.getElementById('hist-'+t).style.display='block';
+}
+
+// Set default date/time in forms
+function initForms() {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+  const timeStr = now.toTimeString().slice(0,5);
+  document.getElementById('f-date').value  = dateStr;
+  document.getElementById('f-time').value  = timeStr;
+  document.getElementById('wf-date').value = dateStr;
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  initStorage();
+  initForms();
+  renderDashboard();
+});
+</script>
+
+<!-- Chart.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<!-- FAB -->
+<button class="fab" id="fab" onclick="switchView('log')">+</button>
+
+</body>
+</html>
